@@ -1,0 +1,76 @@
+/*
+File: fn_weed.sqf
+Author: Kuchiha
+2´nd Author: not sure ...... ->  Mario
+Edit: Hirschi@Liga-Life
+
+Description:
+Marijuana effects.
+*/
+
+private["_tStart","_count","_smoke_action"];
+
+life_drugged_weed = 1;
+player setVariable ["smoke_weed", true, true];
+player setVariable ["drug_weed", true, true];
+_tStart = time;
+
+life_drug = life_drug + 0.83;
+
+
+
+//Activate ppEffects we need
+"chromAberration" ppEffectEnable true;
+"radialBlur" ppEffectEnable true;
+enableCamShake true;
+
+_count = 0;
+while{life_drugged_weed == 1 && Alive player && player getVariable ["smoke_weed",false] && (time - _tStart) < life_drugged_weed_duration * 60} do 
+{
+
+	
+
+	
+	"chromAberration" ppEffectAdjust [random 0.25,random 0.25,true];
+	"chromAberration" ppEffectCommit 1;
+	"radialBlur" ppEffectAdjust [random 0.02,random 0.02,0.15,0.15];
+	"radialBlur" ppEffectCommit 1;
+	addcamShake[random 3, 1, random 3];
+	
+	sleep 0.7;
+	
+	
+	
+	"chromAberration" ppEffectAdjust [random 0.55,random 0.55,true];
+	"chromAberration" ppEffectCommit 1;
+	"radialBlur" ppEffectAdjust [random 0.12,random 0.12,0.35,0.25];
+	"radialBlur" ppEffectCommit 1;
+	addcamShake[random 3, 1, random 3];
+	sleep 0.3;
+	_count = _count + 1;
+}; 
+
+player setVariable ["smoke_weed", false, true];
+life_drugged_weed = 0;
+
+//Stop effects
+"chromAberration" ppEffectAdjust [0,0,true];
+"chromAberration" ppEffectCommit 5;
+"radialBlur" ppEffectAdjust [0,0,0,0];
+"radialBlur" ppEffectCommit 5;
+sleep 6;
+
+if(life_drugged_cocaine == 0 && (time - _tStart) > life_drugged_weed_duration * 50) then { life_drugged_cocaine = -1; };
+
+
+
+
+_tStart = time;
+waitUntil{sleep 5; (!Alive player || (time - _tStart) > 300 || player getVariable ["smoke_weed",false])};
+
+if(!(player getVariable ["smoke_weed",false]) || !Alive player) then { player setVariable ["drug_weed", false, true]; life_drugged_weed = -1; };
+
+//Deactivate ppEffects
+"chromAberration" ppEffectEnable false;
+"radialBlur" ppEffectEnable false;
+resetCamShake; 

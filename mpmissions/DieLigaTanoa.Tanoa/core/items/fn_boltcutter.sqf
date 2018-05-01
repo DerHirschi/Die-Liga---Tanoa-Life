@@ -1,0 +1,109 @@
+#include "..\..\Liga_script_macros.hpp"
+/*
+	Author: Bryan "Tonic" Boardwine
+	
+	Description:
+	Breaks the lock on a single door (Closet door to the player).
+*/
+private["_building","_door","_doors","_cpRate","_title","_progressBar","_titleText","_cp","_ui","_e"];
+_building = param [0,ObjNull,[ObjNull]];
+
+if(isNull _building) exitWith {};
+_owners = _building GVAR "house_owner";
+if(EQUAL(typeOf _building,"Land_Research_house_V1_F") && !(isNil "_owners")) exitWith {}; 
+_e = false;
+if!(_building isKindOf "Land_Tank_rust_F") then {
+	if(!(_building isKindOf "House_F")) exitWith {_e = true;hint "Du guckst nicht auf eine Haustuer."};	
+
+	if((nearestObject [[16019.5,16952.9,0],"Land_Dome_Big_F"]) == _building OR (nearestObject [[16019.5,16952.9,0],"Land_Research_house_V1_F"]) == _building) then {
+		[[1,2],"STR_ISTR_Bolt_AlertFed",true,[]] remoteExecCall ["life_fnc_broadcast",RCLIENT];
+	} else {
+		[0,"STR_ISTR_Bolt_AlertHouse",true,[profileName]] remoteExecCall ["life_fnc_broadcast",RCLIENT];
+	};
+
+	_doors = FETCH_CONFIG2(getNumber,CONFIG_VEHICLES,(typeOf _building), "numberOfDoors");
+
+	_door = 0;
+	//Find the nearest door
+	for "_i" from 1 to _doors do {
+		_selPos = _building selectionPosition format["Door_%1_trigger",_i];
+		_worldSpace = _building modelToWorld _selPos;
+			if(player distance _worldSpace < 5) exitWith {_door = _i;};
+	};
+	if(EQUAL(_door,0)) exitWith {hint localize "STR_Cop_NotaDoor"}; //Not near a door to be broken into.
+	if((_building GVAR [format["bis_disabled_Door_%1",_door],0]) == 0) exitWith {hint localize "STR_House_Raid_DoorUnlocked"};
+};
+if(_e) exitWith {};
+if(isNil "life_boltcutter_uses") then {life_boltcutter_uses = 0;};
+life_action_inUse = true;
+
+//Setup the progress bar
+disableSerialization;
+_title = localize "STR_ISTR_Bolt_Process";
+5 cutRsc ["life_progress","PLAIN"];
+_ui = uiNamespace GVAR "life_progress";
+_progressBar = _ui displayCtrl 38201;
+_titleText = _ui displayCtrl 38202;
+_titleText ctrlSetText format["%2 (1%1)...","%",_title];
+_progressBar progressSetPosition 0.01;
+_cP = 0.01;
+
+switch (typeOf _building) do {
+	case "Land_Dome_Big_F": {_cpRate = 0.003;};
+	case "Land_Research_house_V1_F": {_cpRate = 0.0015;};
+	case "Land_Tank_rust_F": {_cpRate = 0.0005;};
+	
+	default {_cpRate = 0.0015;}
+};
+
+if(EQUAL(typeOf _building,"Land_Tank_rust_F")) then {
+	if(random 100 > 66) then {
+		[1,"Jemand versucht einen Bohrtum aufzubrechen.."] remoteExec ["life_fnc_broadcast",RCLIENT];
+		_e = true;
+	};	
+};
+
+while {true} do
+{
+	if(animationState player != "AinvPknlMstpsnonWnonDnon_medic_1" ) then {
+		player action ["SwitchWeapon", player, player, 100];
+		player playMove "AinvPknlMstpsnonWnonDnon_medic_1";
+		player playActionNow "stop";
+		player playMove "AinvPknlMstpsnonWnonDnon_medic_1";
+		player playActionNow "stop";
+		player playMove "AinvPknlMstpsnonWnonDnon_medic_1";
+	};
+	sleep 0.195;
+	if(isNull _ui) then {
+		5 cutRsc ["life_progress","PLAIN"];
+		_ui = uiNamespace GVAR "life_progress";
+		_progressBar = _ui displayCtrl 38201;
+		_titleText = _ui displayCtrl 38202;
+	};
+	_cP = _cP + _cpRate;
+	_progressBar progressSetPosition _cP;
+	_titleText ctrlSetText format["%3 (%1%2)...",round(_cP * 100),"%",_title];
+	if(_cP >= 1 OR !alive player) exitWith {};
+	if(life_istazed) exitWith {}; //Tazed
+	if(life_interrupted) exitWith {};
+};
+
+//Kill the UI display and check for various states
+5 cutText ["","PLAIN"];
+player playActionNow "stop";
+if(!alive player OR life_istazed) exitWith {life_action_inUse = false;};
+if((player GVAR["restrained",false])) exitWith {life_action_inUse = false;};
+if(life_interrupted) exitWith {life_interrupted = false; titleText[localize "STR_NOTF_ActionCancel","PLAIN"]; life_action_inUse = false;};
+life_boltcutter_uses = life_boltcutter_uses + 1;
+life_action_inUse = false;
+if(life_boltcutter_uses >= 5) then {
+	[false,"boltcutter",1] call life_fnc_handleInv;
+	life_boltcutter_uses = 0;
+};
+if!(_building isKindOf "Land_Tank_rust_F") then {
+	_building SVAR[format["bis_disabled_Door_%1",_door],0,true]; //Unlock the door.
+};
+if((_building GVAR["locked",false])) then {
+	_building SVAR["locked",false,true];
+};
+if(_e) then {[getPlayerUID player,profileName,"459"] remoteExecCall ["life_fnc_wantedAdd",RSERV];};

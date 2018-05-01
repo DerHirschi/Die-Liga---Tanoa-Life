@@ -1,0 +1,1 @@
+#include "..               Liga-AutoKick ... Zur Klärung des Vorfalls wende Dich bitte an unseren Support auf dem TS3 ... ts3.liga-life.de            .."
